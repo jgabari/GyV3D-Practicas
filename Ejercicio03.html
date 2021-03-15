@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Ejercicio 3</title>
+</head>
+
+<body onload="init()">
+    <canvas id="myCanvas" width="640" height="480"></canvas>
+</body>
+
+<script id="shaderVs" type="x-shader/x-vertex">
+    attribute vec4 a_Position;
+    attribute float a_Size;
+    void main() {
+        gl_Position = a_Position;
+        gl_PointSize = a_Size;
+    }
+</script>
+
+<script id="shaderFs" type="x-shader/x-fragment">
+    precision mediump float;
+    uniform vec4 u_FragColor;
+    void main() {
+        gl_FragColor = u_FragColor;
+    }
+</script>
+
+<script>
+    function init() {
+        // Get canvas object from the DOM
+        var canvas = document.getElementById("myCanvas");
+        
+        // Get the rendering context for WebGL
+        var gl = canvas.getContext("webgl");
+        if (!gl) {
+            console.log("Failed to get the rendering context for WebGL");
+            return;
+        }
+        
+        // Set clear color
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        
+        // Clear canvas
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+        // Register event handler
+        canvas.onmousedown = function(ev) {
+            click(ev, gl, canvas);
+        }
+        
+        // Init shaders
+        var vs = document.getElementById('shaderVs').innerHTML;
+        var fs = document.getElementById('shaderFs').innerHTML;
+        if (!initShaders(gl, vs, fs)) {
+            console.log('Failed to initialize shaders.');
+            return;
+        }
+    }
+    
+    // Variables
+    var positions = [];
+    var sizes = [];
+    var colors = [];
+    
+    function click(ev, gl, canvas) {
+        // coordinates of canvas origin
+        var rect = ev.target.getBoundingClientRect();
+        
+        // relative x coordinate of click in canvas
+        var clickX = ev.clientX - rect.left;
+        
+        // relative y coordinate of click in canvas
+        var clickY = ev.clientY - rect.top;
+        
+        // WebGL coordinates (3D)
+        var halfCanvasWidth = canvas.width / 2;
+        var halfCanvasHeight = canvas.height / 2;
+        var x = (clickX - halfCanvasWidth) / halfCanvasWidth;
+        var y = (halfCanvasHeight - clickY) / halfCanvasHeight;
+        var xyz = [x, y, 0];
+        
+        positions.push(xyz);
+
+        // Size selection
+        var distance = 20.0 * (Math.sqrt(Math.pow((x), 2) + Math.pow((y), 2)));
+        sizes.push(distance);
+        
+        // Color selection
+        if (Math.abs(x) > 0.7 || Math.abs(y) > 0.7) {
+            colors.push([1.0, 1.0, 1.0, 1.0]);
+        }else {
+            if (x <= 0 && y <= 0) {
+                colors.push([0.0, 0.0, 1.0, 1.0]);
+            }else if (x < 0 && y > 0) {
+                colors.push([1.0, 0.0, 0.0, 1.0]);
+            }else if (x > 0 && y < 0) {
+                colors.push([1.0, 1.0, 0.0, 1.0]);
+            }else {
+                colors.push([0.0, 1.0, 0.0, 1.0]);
+            }
+        }
+        
+        // Get variables
+        var a_Position = gl.getAttribLocation(gl.program, "a_Position");
+        var a_Size = gl.getAttribLocation(gl.program, "a_Size");
+        var u_FragColor = gl.getUniformLocation(gl.program, "u_FragColor");
+
+        // Clear canvas
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+        // Draw points
+        for (var i = 0; i < positions.length; i++) {
+            gl.vertexAttrib3fv(a_Position, positions[i]);
+            gl.vertexAttrib1f(a_Size, sizes[i]);
+            gl.uniform4fv(u_FragColor, colors[i]);
+            gl.drawArrays(gl.POINTS, 0, 1);
+        }
+    }
+    
+    function initShaders(gl, vs_source, fs_source) {
+        // Compile shaders
+        var vertexShader = makeShader(gl, vs_source, gl.VERTEX_SHADER);
+        var fragmentShader = makeShader(gl, fs_source, gl.FRAGMENT_SHADER);
+        
+        // Create program
+        var glProgram = gl.createProgram();
+        
+        // Attach and link shaders to the program
+        gl.attachShader(glProgram, vertexShader);
+        gl.attachShader(glProgram, fragmentShader);
+        gl.linkProgram(glProgram);
+        if (!gl.getProgramParameter(glProgram, gl.LINK_STATUS)) {
+            alert("Unable to initialize the shader program");
+            return false;
+        }
+        
+        // Use program
+        gl.useProgram(glProgram);
+        gl.program = glProgram;
+        
+        return true;
+    }
+
+    function makeShader(gl, src, type) {
+        var shader = gl.createShader(type);
+        gl.shaderSource(shader, src);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert("Error compiling shader: " + gl.getShaderInfoLog(shader));
+            return;
+        }
+        return shader;
+    }
+    
+</script>
+
+</html>
