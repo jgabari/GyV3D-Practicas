@@ -22,6 +22,7 @@
     </script>
 
     <script id="shaderFs" type="x-shader/x-fragment">
+        precision highp float;
         precision mediump float;
         uniform sampler2D u_Sampler0;
         uniform sampler2D u_Sampler1;
@@ -37,10 +38,19 @@
     <script>
         var gl;
         var count = 0.0;
+        var z = -3;
+        var rot = [0.0, 0.0, 0.0];
+        var canvas;
+        var cam = 0.0;
+        var arrow = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0];
+        var left_arrow = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0];
+        var right_arrow = [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0];
+        var up_arrow = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
+        var down_arrow = [0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0];
 
         function init() {
             // Get canvas object from the DOM
-            var canvas = document.getElementById("myCanvas");
+            canvas = document.getElementById("myCanvas");
 
             // Init WebGL context
             gl = canvas.getContext("webgl");
@@ -66,42 +76,78 @@
             // Hidden surface removal
             gl.enable(gl.DEPTH_TEST);
 
-            // Init textures
+            // Init textures and draw
             initTexturesAndDraw(gl);
+
+            // Evaluate keys
+            document.onkeydown = function(ev) {
+                var step = new Number(document.getElementById("step").value);
+                switch (ev.keyCode) {
+                    case 37: // Left
+                        rot = [0.0, -step, 0.0];
+                        arrow = left_arrow;
+                        break;
+                    case 39: // Right
+                        rot = [0.0, step, 0.0];
+                        arrow = right_arrow;
+                        break;
+                    case 38: // Up
+                        rot = [-step, 0.0, 0.0];
+                        arrow = up_arrow;
+                        break;
+                    case 40: // Down
+                        rot = [step, 0.0, 0.0];
+                        arrow = down_arrow;
+                        break;
+                    case 33: // PageUp
+                        cam += step;
+                        break;
+                    case 34: // PageDown
+                        cam -= step;
+                        break;
+                }
+                // Draw Scene
+                initTexturesAndDraw(gl);
+            };
+
+            // Event listener for mouse wheel
+            document.addEventListener('wheel', function (event) {
+                z = event.wheelDelta > 0 ? z + 1 : z - 1;
+            });
         }
 
         function initVertexShader(gl) {
             // Vertexes and texture coordinates
             var vertexesAndTextures = [
-                -0.5, -0.5, -0.5, 0.0, 0.0,
-                0.5, -0.5, -0.5, 1.0, 0.0,
-                0.5, 0.5, -0.5, 1.0, 1.0,
-                -0.5, 0.5, -0.5, 0.0, 1.0,
+                -0.5, -0.5, -0.5, arrow[0], arrow[1],
+                0.5, -0.5, -0.5, arrow[2], arrow[3],
+                0.5, 0.5, -0.5, arrow[4], arrow[5],
+                -0.5, 0.5, -0.5, arrow[6], arrow[7],
 
-                -0.5, -0.5, 0.5, 0.0, 1.0,
-                0.5, -0.5, 0.5, 0.0, 0.0,
-                0.5, 0.5, 0.5, 1.0, 0.0,
-                -0.5, 0.5, 0.5, 1.0, 1.0,
+                -0.5, -0.5, 0.5, arrow[4], arrow[5],
+                0.5, -0.5, 0.5, arrow[6], arrow[7],
+                0.5, 0.5, 0.5, arrow[0], arrow[1],
+                -0.5, 0.5, 0.5, arrow[2], arrow[3],
 
-                -0.5, -0.5, -0.5, 0.0, 0.0,
-                -0.5, 0.5, -0.5, 0.0, 1.0,
-                -0.5, 0.5, 0.5, 1.0, 1.0,
-                -0.5, -0.5, 0.5, 1.0, 0.0,
+                -0.5, -0.5, -0.5, arrow[2], arrow[3],
+                -0.5, 0.5, -0.5, arrow[4], arrow[5],
+                -0.5, 0.5, 0.5, arrow[6], arrow[7],
+                -0.5, -0.5, 0.5, arrow[0], arrow[1],
 
-                0.5, -0.5, -0.5, 0.0, 0.0,
-                0.5, 0.5, -0.5, 0.0, 1.0,
-                0.5, 0.5, 0.5, 1.0, 1.0,
-                0.5, -0.5, 0.5, 1.0, 0.0,
+                0.5, -0.5, -0.5, arrow[0], arrow[1],
+                0.5, 0.5, -0.5, arrow[6], arrow[7],
+                0.5, 0.5, 0.5, arrow[4], arrow[5],
+                0.5, -0.5, 0.5, arrow[2], arrow[3],
 
-                -0.5, -0.5, -0.5, 0.0, 0.0,
-                -0.5, -0.5, 0.5, 0.0, 1.0,
-                0.5, -0.5, 0.5, 1.0, 1.0,
-                0.5, -0.5, -0.5, 1.0, 0.0,
+                -0.5, -0.5, -0.5, arrow[6], arrow[7],
+                -0.5, -0.5, 0.5, arrow[0], arrow[1],
+                0.5, -0.5, 0.5, arrow[2], arrow[3],
+                0.5, -0.5, -0.5, arrow[4], arrow[5],
 
-                -0.5, 0.5, -0.5, 0.0, 1.0,
-                -0.5, 0.5, 0.5, 0.0, 0.0,
-                0.5, 0.5, 0.5, 1.0, 0.0,
-                0.5, 0.5, -0.5, 1.0, 1.0,
+                -0.5, 0.5, -0.5, arrow[0], arrow[1],
+                -0.5, 0.5, 0.5, arrow[6], arrow[7],
+                0.5, 0.5, 0.5, arrow[4], arrow[5],
+                0.5, 0.5, -0.5, arrow[2], arrow[3],
             ];
 
             // Indexes
@@ -155,7 +201,7 @@
 
             // Write u_vMatrix
             var vMatrixUniform = gl.getUniformLocation(gl.program, "u_vMatrix");
-            var vMatrix = mat4.lookAt(mat4.create(), [0, 0, 3], [0, 0, 0], [0, 1, 0]);
+            var vMatrix = mat4.lookAt(mat4.create(), [0, cam, z], [0, cam, 0], [0, 1, 0]);
             gl.uniformMatrix4fv(vMatrixUniform, false, vMatrix);
         }
 
@@ -164,7 +210,7 @@
             image0.src = 'arrow.jpg';
             var image1 = new Image();
             image1.src = 'circle.gif';
-            image.onload = function () {
+            image0.onload = function () {
                 loadTexture(gl, "u_Sampler0", image0, 0, true);
                 image1.onload = function () {
                     loadTexture(gl, "u_Sampler1", image1, 1, true);
@@ -191,17 +237,20 @@
         function drawScene() {
             // Clear
             gl.clear(gl.COLOR_BUFFER_BIT);
+            initProjection(gl, canvas);
 
             // Rotate
-            var mvMatrix = mat4.fromRotation(mat4.create(), count, [0.5, 0.5, 0.5]);
+            var rotation = mat4.create(rot);
+            var mvMatrix = mat4.fromRotation(mat4.create(), count, rotation);
             var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
             gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix);
 
             // Draw
             gl.drawElements(gl.TRIANGLES, 6 * 2 * 3, gl.UNSIGNED_SHORT, 0);
+            // 6*2*3: numero de caras por numero de triangulos por cara por numero de vertices por triangulo.
 
             // Call drawScene again in the next browser repaint
-            count += 0.01;
+            count += step;
             requestAnimationFrame(drawScene);
         }
 
@@ -239,6 +288,8 @@
 
 <body onload="init()">
     <canvas id="myCanvas" width="640" height="480"></canvas>
+    <br>
+    Step: <input type="text" value="0.1" id="step">
 </body>
 
 </html>
