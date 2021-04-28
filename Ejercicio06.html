@@ -39,14 +39,15 @@
         var gl;
         var count = 0.0;
         var z = -3;
-        var rot = [0.0, 0.0, 0.0];
+        var rotx = 0.0;
+        var roty = 0.0;
         var canvas;
         var cam = 0.0;
-        var arrow = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0];
-        var left_arrow = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0];
-        var right_arrow = [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0];
-        var up_arrow = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
-        var down_arrow = [0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0];
+        var arrow = [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0];
+        var right_arrow = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0];
+        var left_arrow = [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0];
+        var down_arrow = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
+        var up_arrow = [0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0];
 
         function init() {
             // Get canvas object from the DOM
@@ -80,34 +81,37 @@
             initTexturesAndDraw(gl);
 
             // Evaluate keys
-            document.onkeydown = function(ev) {
+            document.onkeydown = function (ev) {
                 var step = new Number(document.getElementById("step").value);
                 switch (ev.keyCode) {
                     case 37: // Left
-                        rot = [0.0, -step, 0.0];
+                        rotx = 0.0;
+                        roty += -step;
                         arrow = left_arrow;
                         break;
                     case 39: // Right
-                        rot = [0.0, step, 0.0];
+                        rotx = 0.0;
+                        roty += step;
                         arrow = right_arrow;
                         break;
                     case 38: // Up
-                        rot = [-step, 0.0, 0.0];
+                        rotx += step;
+                        roty = 0.0;
                         arrow = up_arrow;
                         break;
                     case 40: // Down
-                        rot = [step, 0.0, 0.0];
+                        rotx += -step;
+                        roty = 0.0;
                         arrow = down_arrow;
                         break;
                     case 33: // PageUp
                         cam += step;
                         break;
                     case 34: // PageDown
-                        cam -= step;
+                        cam += -step;
                         break;
                 }
-                // Draw Scene
-                initTexturesAndDraw(gl);
+                initVertexShader(gl);
             };
 
             // Event listener for mouse wheel
@@ -240,17 +244,17 @@
             initProjection(gl, canvas);
 
             // Rotate
-            var rotation = mat4.create(rot);
-            var mvMatrix = mat4.fromRotation(mat4.create(), count, rotation);
+            var xrotation = mat4.fromXRotation(mat4.create(), rotx);
+            var yrotation = mat4.fromYRotation(mat4.create(), roty);
+            var mvMatrix = mat4.multiply(mat4.create(), xrotation, yrotation);
             var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
             gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix);
 
             // Draw
             gl.drawElements(gl.TRIANGLES, 6 * 2 * 3, gl.UNSIGNED_SHORT, 0);
-            // 6*2*3: numero de caras por numero de triangulos por cara por numero de vertices por triangulo.
 
             // Call drawScene again in the next browser repaint
-            count += step;
+            count += 0.01;
             requestAnimationFrame(drawScene);
         }
 
