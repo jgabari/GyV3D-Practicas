@@ -9,17 +9,21 @@
     <script id="shaderVs" type="x-shader/x-vertex">
         attribute vec4 a_Position;
         attribute vec2 a_TexCoord;
+        attribute vec4 a_Normal;
 
         uniform mat4 u_pMatrix;
         uniform mat4 u_vMatrix;
         uniform mat4 u_mvMatrix;
+        uniform mat4 u_NormalMatrix;
 
         varying vec2 v_TexCoord;
+        varying highp vec4 v_Normal;
 
-
-        void main() {
+        void main(void) {
             gl_Position = u_pMatrix * u_vMatrix * u_mvMatrix * a_Position;
             v_TexCoord = a_TexCoord;
+
+            v_Normal = u_NormalMatrix * a_Normal;
         }
     </script>
 
@@ -27,10 +31,23 @@
         precision highp float;
 
         uniform sampler2D u_Sampler;
+
+        uniform vec3 u_LightColor;
+        uniform vec3 u_LightDirection;
+        uniform vec3 u_AmbientLight;
+
+        varying highp vec4 v_Normal;
         varying vec2 v_TexCoord;
 
         void main(void) {
-            gl_FragColor = texture2D(u_Sampler, v_TexCoord);
+            float nDotL = max(dot(u_LightDirection, normalize(v_Normal.xyz)), 0.0);
+
+            vec4 texture = texture2D(u_Sampler, v_TexCoord);
+
+            vec3 diffuse = u_LightColor * texture.rgb * nDotL;
+            vec3 ambient = u_AmbientLight * texture.rgb;
+
+            gl_FragColor = vec4(diffuse + ambient, texture.a);
         }
     </script>
 
@@ -76,6 +93,7 @@
         function initVertexShader(gl) {
             // Vertexes and textures coordinates
             var vertexesAndTextures = [];
+            var normals = [];
             for (var i = 0; i <= LATITUDE_BANDS; i++) {
                 var theta = i * Math.PI / LATITUDE_BANDS;
                 var sinTheta = Math.sin(theta);
@@ -99,6 +117,8 @@
 
                     vertexesAndTextures.push(u);
                     vertexesAndTextures.push(v);
+
+                    normals.push(x, y, z, 1.0);
                 }
             }
 
@@ -131,9 +151,17 @@
             gl.enableVertexAttribArray(vertexColorAttribute);
             gl.vertexAttribPointer(vertexColorAttribute, 2, gl.FLOAT, false, 4 * (3 + 2), 4 * 3);
 
+            gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+
+            var vertexNormalAttribute = gl.getAttribLocation(gl.program, "a_Normal");
+            gl.enableVertexAttribArray(vertexNormalAttribute);
+            gl.vertexAttribPointer(vertexNormalAttribute, 4, gl.FLOAT, false, 0, 0);
+
             // Write indexes in gl.ELEMENT_ARRAY_BUFFER
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
             gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexes), gl.STATIC_DRAW);
+
         }
 
 		function toRadian(g){
@@ -186,8 +214,37 @@
             var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
             gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix);
 
+            // Get the normal direction using the model Matrix
+            var normalMatrix = mat4.clone(mvMatrix);
+            var normalMatrixInvert = mat4.invert(mat4.create(), normalMatrix);
+            var normalMatrixInvertTranspose = mat4.transpose(mat4.create(), normalMatrixInvert);
+            var normalUniformMatrix = gl.getUniformLocation(gl.program, "u_NormalMatrix");
+            gl.uniformMatrix4fv(normalUniformMatrix, false, normalMatrixInvertTranspose);
+
             // Draw
             gl.drawElements(gl.TRIANGLES, LATITUDE_BANDS * LONGITUDE_BANDS * 3 * 2, gl.UNSIGNED_SHORT, 0);
+
+            // Write u_AmbientLight
+            var ambientLight = [ 0.1, 0.1, 0.1 ];
+            var ambientLightUniform = gl.getUniformLocation(gl.program, "u_AmbientLight");
+            gl.uniform3fv(ambientLightUniform, ambientLight);
+
+            // Write u_LightColor
+            var r = document.getElementById("r").value;
+            var g = document.getElementById("g").value;
+            var b = document.getElementById("b").value;
+            var lightColor = [ r, g, b ];
+            var lightColorUniform = gl.getUniformLocation(gl.program, "u_LightColor");
+            gl.uniform3fv(lightColorUniform, lightColor);
+
+            // Write u_LightDirection
+            var x = document.getElementById("x").value;
+            var y = document.getElementById("y").value;
+            var z = document.getElementById("z").value;
+            var lightDirection = [ x, y, z ];
+            vec3.normalize(lightDirection, lightDirection);
+            var lightDirectionUniform = gl.getUniformLocation(gl.program, "u_LightDirection");
+            gl.uniform3fv(lightDirectionUniform, lightDirection);
 
             // Call drawScene again in the next browser repaint
             count += 0.01;
